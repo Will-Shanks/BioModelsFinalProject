@@ -11,8 +11,8 @@ class Plot:
         plt.ion()
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111)
-        self.ax.get_xaxis().set_visible(False)
-        self.ax.get_yaxis().set_visible(False)
+        #self.ax.get_xaxis().set_visible(False)
+        #self.ax.get_yaxis().set_visible(False)
 
     def plot(self, points):
         """Plots the given points
@@ -20,7 +20,7 @@ class Plot:
             points (np.ndarray(2,)): xy coordinates of each point
         """
         self.ax.clear()
-        self.ax.scatter(points[:, 0], points[:, 1], color="k", s=150)
+        self.ax.scatter(points[:, 0], points[:, 1], color="k")#, s=50)
         self.ax.errorbar(points[:, 0], points[:, 1], xerr=self.wingspan / 2,
                          linestyle="None", color="k")
         self.fig.canvas.draw()
