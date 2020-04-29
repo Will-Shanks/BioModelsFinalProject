@@ -7,7 +7,7 @@ import numpy as np
 
 import plotter
 
-T = 4000  # number of time steps
+T = 2000  # number of time steps
 
 
 class Flock:
@@ -35,7 +35,9 @@ class Flock:
         # initialize birds and plot
         self._plot = plotter.Plot(self._w)
         # spread the birds out in some arbitrary way
-        self._birds = np.random.randn(n, 2) * n / 3 * self._w
+        # x, y, energy
+        self._birds = np.random.randn(n, 3) * n / 3 * self._w
+        self._birds[:, 2] = 6000
         self.plot()
 
     def plot(self):
@@ -48,33 +50,44 @@ class Flock:
         downwash = 0
         swarming = 0
         self._birds = self._birds[self._birds[:, 1].argsort()[::-1]]
+        # front bird always flying in the open
+        self._birds[0, 2] -= 3
         for bird in self._birds[1:, :]:
             # check if in proximity to another bird
             if not self._inwash(bird):
                 # not close to another bird, find one to move towards
                 self._swarm(bird)
                 swarming += 1
+                # take away 3 energy for flying in the open
+                bird[2] -= 3
             else:
                 # try and find a better view without doing more work
                 self._adjust_view(bird)
                 if self._downwash(bird):
                     downwash += 1
+                    # take 5 energy to fly in downwash
+                    bird[2] -= 5
                 else:
                     upwash += 1
+                    # take 1 energy to fly in upwash
+                    bird[2] -= 1
 
         self.plot()
+        # if converged, then sim over 
         if upwash == self._n - 1:
-            print("Done!")
             return True
-        else:
-            print("upwash:   {}".format(upwash))
-            print("downwash: {}".format(downwash))
-            print("swarming: {}".format(swarming))
+        print(self._birds[:, 2].min())
+        # if a bird is out of energy sim over
+        if self._birds[:, 2].min() <= 0:
+            return True
+        print("upwash:   {}".format(upwash))
+        print("downwash: {}".format(downwash))
+        print("swarming: {}".format(swarming))
         return False
 
     def _swarm(self, bird):
         """move towards the closest bird to bird"""
-        (x, y) = self._closest_bird(bird)
+        (x, y, _) = self._closest_bird(bird)
         if abs(x - bird[0]) <= self._ur:
             x = None
         self._move(bird, x, y)
@@ -185,9 +198,10 @@ class Flock:
             ydelta = 0
         # check move doesn't collid with other birds
         # if it does move bax dy
-        for b in self._infront(bird):
-            if abs(b[0] - (bird[0] + xdelta)) < Flock._w \
-               and abs(b[1] - (bird[1] + ydelta)) < Flock._e:
+        for b in self._birds:
+            if (abs(b[0] - (bird[0] + xdelta)) < Flock._w
+               and abs(b[1] - (bird[1] + ydelta)) < Flock._e
+               and bird[1] < b[1]):
                 bird[1] -= ydelta
                 return
         bird[0] += xdelta
@@ -200,8 +214,11 @@ def sim(n=20):
         n(uint): number of birds in flock
     """
     f = Flock(n)
-    while not f.step():
-        pass
+    for i in range(T):
+        if f.step():
+            print(i)
+            break
+    print("Done!")
     time.sleep(5)
 
 
