@@ -7,17 +7,18 @@ import numpy as np
 
 import plotter
 
-T = 2000  # number of time steps
+T = 3000  # number of time steps
 
 
 class Flock:
     """A flock of birds"""
-    _w = 50  # wingspan
-    _d = 50  # wash length
-    _l = 30  # upwash width
-    _dx = 3  # max lateral movment per step
-    _dy = 3  # max longitudinal movment per step
-    _e = 9   # min longitudinal seperation
+    _w = 50   # wingspan
+    _d = 50   # wash length
+    _l = 30   # upwash width
+    _dx = 3   # max lateral movment per step
+    _dy = 3   # max longitudinal movment per step
+    _e = 9    # min longitudinal seperation
+    _t = 300  # threshold to swap positions
 
     def __init__(self, n):
         """Initialize Flock
@@ -37,7 +38,7 @@ class Flock:
         # spread the birds out in some arbitrary way
         # x, y, energy
         self._birds = np.random.randn(n, 3) * n / 3 * self._w
-        self._birds[:, 2] = 6000
+        self._birds[:, 2] = 2000 + abs(np.random.randn(n)) * 1000
         self.plot()
 
     def plot(self):
@@ -71,12 +72,17 @@ class Flock:
                     upwash += 1
                     # take 1 energy to fly in upwash
                     bird[2] -= 1
+                    drafter = self._upwash(bird)
+                    if (drafter is not False
+                            and drafter[2] < bird[2] - Flock._t):
+                        drafter[2], bird[2] = bird[2], drafter[2]
 
         self.plot()
         # if converged, then sim over 
-        if upwash == self._n - 1:
-            return True
+        #if upwash == self._n - 1:
+        #    return True
         print(self._birds[:, 2].min())
+        print(self._birds[:, 2].max())
         # if a bird is out of energy sim over
         if self._birds[:, 2].min() <= 0:
             return True
@@ -130,9 +136,9 @@ class Flock:
 
     def _upwash(self, bird):
         """return if bird is in a upwash"""
-        for _ in (None for b in self._wash(bird)
+        for a in (b for b in self._wash(bird)
                   if self._dr < abs(b[0] - bird[0]) <= self._ur):
-            return True
+            return a
         return False
 
     def _closest_bird(self, bird):
