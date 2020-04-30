@@ -18,7 +18,7 @@ class Flock:
     _dx = 3   # max lateral movment per step
     _dy = 3   # max longitudinal movment per step
     _e = 9    # min longitudinal seperation
-    _t = 300  # threshold to swap positions
+    _t = 100  # threshold to swap positions
 
     def __init__(self, n):
         """Initialize Flock
