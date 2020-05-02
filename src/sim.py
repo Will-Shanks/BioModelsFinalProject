@@ -18,14 +18,21 @@ class Flock:
     _dx = 3   # max lateral movment per step
     _dy = 3   # max longitudinal movment per step
     _e = 9    # min longitudinal seperation
-    _t = 100  # threshold to swap positions
+    _sfe = 7  # energy cost to switch forward
+    _uf = 1   # cost of flying in updraft
+    _df = 5   # cost of flying in downdraft
+    _of = 3   # cost of flying in the open
 
-    def __init__(self, n):
+    def __init__(self, n, thresh, plot=True):
         """Initialize Flock
         Args:
             n(uint): Number of birds in flock
+            thresh(uint): energy threshold used to decide when to switch
+            plot(bool): flag if sim should be plotted default: True
         """
         self._n = n
+        self._t = thresh
+        self._makePlot = plot
         # initialize vars
         # lambda is amount of win over lap for optimal pos
         self._lambda = -0.1073 * Flock._w
@@ -34,12 +41,14 @@ class Flock:
         self._dr = Flock._w + self._lambda
         self._ur = self._dr + Flock._l
         # initialize birds and plot
-        self._plot = plotter.Plot(self._w)
         # spread the birds out in some arbitrary way
         # x, y, energy
         self._birds = np.random.randn(n, 3) * n / 3 * self._w
         self._birds[:, 2] = 2000 + abs(np.random.randn(n)) * 1000
-        self.plot()
+        # make plot
+        if self._makePlot:
+            self._plot = plotter.Plot(self._w)
+            self.plot()
 
     def plot(self):
         """update plot of flock"""
@@ -52,7 +61,7 @@ class Flock:
         swarming = 0
         self._birds = self._birds[self._birds[:, 1].argsort()[::-1]]
         # front bird always flying in the open
-        self._birds[0, 2] -= 3
+        self._birds[0, 2] -= Flock._of
         for bird in self._birds[1:, :]:
             # check if in proximity to another bird
             if not self._inwash(bird):
@@ -60,35 +69,34 @@ class Flock:
                 self._swarm(bird)
                 swarming += 1
                 # take away 3 energy for flying in the open
-                bird[2] -= 3
+                bird[2] -= Flock._of
             else:
                 # try and find a better view without doing more work
                 self._adjust_view(bird)
                 if self._downwash(bird):
                     downwash += 1
                     # take 5 energy to fly in downwash
-                    bird[2] -= 5
+                    bird[2] -= Flock._df
                 else:
                     upwash += 1
                     # take 1 energy to fly in upwash
-                    bird[2] -= 1
-                    drafter = self._upwash(bird)
-                    if (drafter is not False
-                            and drafter[2] < bird[2] - Flock._t):
-                        drafter[2], bird[2] = bird[2], drafter[2]
+                    bird[2] -= Flock._uf
+                    # check who bird is drafting off of
+                    drafting = self._upwash(bird)
+                    if (drafting is not False
+                            and drafting[2] < bird[2] - self._t):
+                        drafting[2], bird[2] = bird[2] - Flock._sfe, drafting[2]
 
-        self.plot()
-        # if converged, then sim over 
-        #if upwash == self._n - 1:
-        #    return True
-        print(self._birds[:, 2].min())
-        print(self._birds[:, 2].max())
+        # print(self._birds[:, 2].min())
+        # print(self._birds[:, 2].max())
         # if a bird is out of energy sim over
+        if self._makePlot:
+            self.plot()
         if self._birds[:, 2].min() <= 0:
             return True
-        print("upwash:   {}".format(upwash))
-        print("downwash: {}".format(downwash))
-        print("swarming: {}".format(swarming))
+        # print("upwash:   {}".format(upwash))
+        # print("downwash: {}".format(downwash))
+        # print("swarming: {}".format(swarming))
         return False
 
     def _swarm(self, bird):
@@ -219,13 +227,13 @@ def sim(n=20):
     Args:
         n(uint): number of birds in flock
     """
-    f = Flock(n)
+    np.random.seed(1234)
+    f = Flock(n, 100, plot=False)
     for i in range(T):
         if f.step():
             print(i)
             break
     print("Done!")
-    time.sleep(5)
 
 
 if __name__ == '__main__':
